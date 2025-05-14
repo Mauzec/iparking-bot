@@ -19,10 +19,10 @@ func ReadDistance(path string) (int, error) {
 	err := retry.Do(3, 100*time.Millisecond, func() error {
 		b, err := os.ReadFile(path)
 		if err != nil {
-			return nil
+			return fmt.Errorf("[ReadDistance] %w: %s", err, path)
 		}
 		if err := json.Unmarshal(b, &payload); err != nil {
-			return err
+			return fmt.Errorf("[ReadDistance] %w: %s", err, path)
 		}
 		return nil
 	})

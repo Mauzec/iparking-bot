@@ -2,10 +2,10 @@ package bot
 
 import (
 	"errors"
-	"log"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/mauzec/ibot-things/config"
+	"github.com/mauzec/ibot-things/pkg/logger"
 )
 
 type Bot struct {
@@ -36,13 +36,17 @@ func NewBotFromConfig(cfg *config.Config) (*Bot, error) {
 	}
 	if cfg.BotTimeout <= 0 {
 		cfg.BotTimeout = 60
-		log.Printf("[BOT] bot timeout is not set or <= 0, using default value: %d", cfg.BotTimeout)
+		logger.Logger().Infof(
+			"[BOT] bot timeout is not set or <= 0, using default value: %d",
+			cfg.BotTimeout,
+		)
 	}
 
 	api, err := tgbotapi.NewBotAPI(cfg.BotToken)
 	if err != nil {
 		return nil, err
 	}
+	logger.Logger().Info("[BOT] USING DEBUG MODE")
 	api.Debug = true
 
 	h := NewHandler(cfg.DataPath)
@@ -55,15 +59,35 @@ func NewBotFromConfig(cfg *config.Config) (*Bot, error) {
 }
 
 func (b *Bot) Run() {
+	// flush all updates; it's good?
+	_, err := b.api.Request(tgbotapi.DeleteWebhookConfig{
+		DropPendingUpdates: true,
+	})
+	if err != nil {
+		logger.Logger().Errorf("[RUN] drop pending updates error: %v", err)
+	}
+
 	u := tgbotapi.NewUpdate(0)
 	u.Timeout = b.updateTimeout
 
 	updates := b.api.GetUpdatesChan(u)
 	for upd := range updates {
-		if upd.Message != nil && upd.Message.IsCommand() {
-			if err := b.handler.Handle(b.api, upd); err != nil {
-				log.Printf("[BOT] handler error: %v", err)
+		if upd.Message != nil {
+			if err := b.handler.Handle(b, &upd); err != nil {
+				logger.Logger().Debugf("[RUN] %v", err)
 			}
 		}
 	}
+}
+
+func (b *Bot) SendMessage(upd *tgbotapi.Update, text string, isReplyToMessage bool) error {
+	msg := tgbotapi.NewMessage(upd.Message.Chat.ID, text)
+	if isReplyToMessage {
+		msg.ReplyToMessageID = upd.Message.MessageID
+	}
+	_, err := b.api.Send(msg)
+	if err != nil {
+		return err
+	}
+	return nil
 }

@@ -17,32 +17,40 @@ func NewHandler(dataPath string) *Handler {
 	}
 }
 
-func (h *Handler) Handle(api *tgbotapi.BotAPI, upd tgbotapi.Update) error {
+func (h *Handler) Handle(b *Bot, upd *tgbotapi.Update) error {
+	if !upd.Message.IsCommand() {
+		err := BotErrNotCommand
+		sendErr := b.SendMessage(upd, "Bot does not support noncommand messages yet", true)
+		if sendErr != nil {
+			err = fmt.Errorf("[Handle] (1) %v\n(2) %v", err, sendErr)
+		}
+		return err
+	}
+
 	switch upd.Message.Command() {
 	case "distance":
-		return h.handleDistance(api, upd)
+		return h.handleDistance(b, upd)
 	default:
-		return fmt.Errorf("unknown command: %s", upd.Message.Command())
+		err := BotErrNotFoundCommand
+		sendErr := b.SendMessage(upd, "Not found this command", true)
+		if sendErr != nil {
+			err = fmt.Errorf("[Handle] (1) %v\n(2) %v", err, sendErr)
+		}
+		return err
 	}
 }
 
-func (h *Handler) handleDistance(api *tgbotapi.BotAPI, upd tgbotapi.Update) error {
+func (h *Handler) handleDistance(b *Bot, upd *tgbotapi.Update) error {
 	dist, err := data.ReadDistance(h.dataPath)
 
-	var msg tgbotapi.MessageConfig
+	var sendErr error
 	if err != nil {
-		msg = tgbotapi.NewMessage(
-			upd.Message.Chat.ID,
-			"Internal error",
-		)
+		sendErr = b.SendMessage(upd, "Internal error. Pls try again or later", false)
 	} else {
-		text := fmt.Sprintf("Distance: %d", dist)
-		msg = tgbotapi.NewMessage(
-			upd.Message.Chat.ID,
-			text,
-		)
+		sendErr = b.SendMessage(upd, fmt.Sprintf("Distance: %d", dist), true)
 	}
-	msg.ReplyToMessageID = upd.Message.MessageID
-	_, err = api.Send(msg)
+	if sendErr != nil {
+		err = fmt.Errorf("[handleDistance] (1) %v\n(2) %v", err, sendErr)
+	}
 	return err
 }
