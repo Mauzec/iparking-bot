@@ -1,6 +1,7 @@
 package bot
 
 import (
+	"context"
 	"errors"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
@@ -46,6 +47,25 @@ func NewBotFromConfig(cfg *config.Config) (*Bot, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	_, err = api.Request(tgbotapi.NewSetMyCommands(
+		tgbotapi.BotCommand{
+			Command:     "start",
+			Description: "Open menu",
+		},
+		tgbotapi.BotCommand{
+			Command:     "distance",
+			Description: "Get distance",
+		},
+		tgbotapi.BotCommand{
+			Command:     "check",
+			Description: "Check availability",
+		},
+	))
+	if err != nil {
+		return nil, err
+	}
+
 	logger.Logger().Info("[BOT] USING DEBUG MODE")
 	api.Debug = true
 
@@ -58,7 +78,7 @@ func NewBotFromConfig(cfg *config.Config) (*Bot, error) {
 	}, nil
 }
 
-func (b *Bot) Run() {
+func (b *Bot) Run(ctx context.Context) {
 	// flush all updates; it's good?
 	_, err := b.api.Request(tgbotapi.DeleteWebhookConfig{
 		DropPendingUpdates: true,
@@ -71,13 +91,29 @@ func (b *Bot) Run() {
 	u.Timeout = b.updateTimeout
 
 	updates := b.api.GetUpdatesChan(u)
-	for upd := range updates {
-		if upd.Message != nil {
+
+	for {
+		select {
+		case <-ctx.Done():
+			logger.Logger().Info("[BOT] stopping")
+			b.api.StopReceivingUpdates()
+			return
+
+		case upd, ok := <-updates:
+			if !ok {
+				return
+			}
+			if upd.Message == nil {
+				continue
+			}
+
 			if err := b.handler.Handle(b, &upd); err != nil {
 				logger.Logger().Debugf("[RUN] %v", err)
 			}
+
 		}
 	}
+
 }
 
 func (b *Bot) SendMessage(upd *tgbotapi.Update, text string, isReplyToMessage bool) error {

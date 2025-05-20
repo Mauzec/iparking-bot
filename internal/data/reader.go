@@ -10,10 +10,10 @@ import (
 )
 
 type DataPayload struct {
-	Distance int `json:"distance"`
+	Distance float64 `json:"distance"`
 }
 
-func ReadDistance(path string) (int, error) {
+func ReadDistance(path string) (float64, error) {
 	var payload DataPayload
 
 	err := retry.Do(3, 100*time.Millisecond, func() error {

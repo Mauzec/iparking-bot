@@ -1,14 +1,14 @@
 package data
 
 type DistanceProvider interface {
-	ReadDistance() (int, error)
+	ReadDistance() (float64, error)
 }
 
 type FileProvider struct {
 	Path string
 }
 
-func (f *FileProvider) ReadDistance() (int, error) {
+func (f *FileProvider) ReadDistance() (float64, error) {
 	return ReadDistance(f.Path)
 }
 

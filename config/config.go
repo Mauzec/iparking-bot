@@ -3,9 +3,12 @@ package config
 import "github.com/spf13/viper"
 
 type Config struct {
-	BotToken   string `mapstructure:"LTA_BOT_TOKEN"`
-	BotTimeout int    `mapstructure:"LTA_BOT_TIMEOUT"`
-	DataPath   string `mapstructure:"DATA_PATH"`
+	BotToken       string `mapstructure:"LTA_BOT_TOKEN"`
+	BotTimeout     int    `mapstructure:"LTA_BOT_TIMEOUT"`
+	DataPath       string `mapstructure:"DATA_PATH"`
+	DeviceAddr     string `mapstructure:"DEVICE_ADDR"`
+	DevicePort     int    `mapstructure:"DEVICE_PORT"`
+	PollIntervalMs int    `mapstructure:"POLL_INTERVAL_MS"`
 }
 
 func LoadConfig(name, ext string, paths ...string) (Config, error) {
