@@ -125,7 +125,8 @@ func (p *EspProvider) run(ctx context.Context) {
 
 		body, err = io.ReadAll(resp.Body)
 		if err != nil {
-			if strings.Contains(err.Error(), "reset by peer") {
+			if strings.Contains(err.Error(), "reset by peer") ||
+				strings.Contains(err.Error(), "forcibly closed ") {
 				// esp library always close socket after request
 
 				// logger.Logger().Debugf("[EspProvider] connection reset by peer, retrying")
